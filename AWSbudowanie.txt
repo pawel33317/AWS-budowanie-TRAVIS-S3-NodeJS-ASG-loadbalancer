@@ -1,0 +1,196 @@
+Proces budowania
+
+############################
+###### TWORZENIE REPO ######
+############################
+Nowe repo na gicie ciTestCzubak
+	.gitignore: node   licenseLMIT  plik readme
+
+
+Opcja 1 na komputerze w³asnym
+	Klonujemy z https://github.com/pawel33317/ciTestCzubak.git
+
+Opcja 2 na zdalnym kompie z platformy c9
+	1. Logujemy siê na C9 https://c9.io/  pawel33317@gmail.com haslo...
+	2. Dodajemy nowy projekt zaznaczamy node.js, link: https://github.com/pawel33317/ciTestCzubak.git
+
+
+	
+############################
+## APLIKACJA WWW Z TESTAMI #
+############################
+Dla projektu nodejs
+Tworzymy plik app.js i podkatalog test
+robimy npm init (je¿eli na w³asnym kompie musimy zainstalowaæ nodeJS npm jest z nim)
+
+
+sprawdzamy czy opcje testscripts: ustawi³y siê na mocha tak jak poni¿ej jak nie to zmienaimy ten plik zgodnie z poni¿szym 
+		{
+		  "name": "ciTestCzubak",
+		  "version": "1.0.0",
+		  "description": "Test",
+		  "main": "app.js",
+		  "directories": {
+			"test": "test"
+		  },
+		  "scripts": {
+			"test": "mocha"
+		  },
+		  "repository": {
+			"type": "git",
+			"url": "https://github.com/pawel33317/ciTestCzubak.git"
+		  },
+		  "author": "",
+		  "license": "ISC",
+		  "bugs": {
+			"url": "https://github.com/pawel33317/ciTestCzubak/issues"
+		  },
+		  "homepage": "https://github.com/pawel33317/ciTestCzubak"
+		}
+
+GIT PUSH
+
+
+W katalogu test piszemy test czyli tworzymy plik test.js i wklejamy do niego
+		var assert = require("assert");
+		var discountCalculator = require("../discount");
+		describe("discount Calculator", function(){
+			it("should have discount function", function(){
+				assert.equal(discountCalculator.discount instanceof Function, true,"typeof discount: " + typeof discountCalculator.discount);
+			});
+		});
+		describe("discount function", function(){
+			it("discount should return 0 with no args ", function(){
+				var discount = discountCalculator.discount();
+				assert.equal(discount, 0, discount + "");
+			});
+		});
+Teraz robimy plik discount.js (../) i wpisujemy w nim 
+		module.exports.discount = function(){ return 0;}
+		
+w katalogu test odpalamy test poni¿sz¹ komend¹ jeœli jej nie ma instalujemy 
+		mocha 
+		npm install -g mocha
+		
+Tworzymy jakiœ program www (serwer port 8000) w app.js wpisujemy coœ ¿eby wyœwietla³o tekst
+		var http = require('http');
+		var server = http.createServer(function (request, response) {
+		  response.writeHead(200, {"Content-Type": "text/plain"});
+		  response.end("Hello World\n");
+		});
+		server.listen(8000);
+		console.log("Server running at http://127.0.0.1:8000/");
+
+GIT PUSH
+
+#############################
+# PROGRAM BUDUJ¥CY - TRAVIS #
+#############################
+Wchodzimy na stronê https://travis-ci.org/ rejestrujemy siê
+W katalogu projektu odpalamy komendê podajemy login i has³o to co do strony travisa
+		travis login   
+	Je¿eli nie ma komendy travis trzeba zainstalowaæ Ruby http://rubyinstaller.org/downloads/ wersja 2.0.0
+		sprawdzenie czy jest ok ruby -v i gem -v i 
+		gem install travis --no-rdoc --no-ri   instaluje komendy travisa
+
+W g³ównym katalogu robimy travis init wygeneruje siê .travis.yml
+Dokonaj edycji utworzonego pliku .travis.yml, usuñ wersje node_js 0.11 i dodaj konfiguracjê:  before_install: npm install -g mocha
+GOTOWY .travis.yml: (klucze fa³szywe)
+		language: node_js
+		before_install: npm install -g mocha
+		deploy:
+		  provider: s3
+		  access_key_id: XXXXXXXXXXXXXXXXXXXXXX
+		  secret_access_key:
+			secure: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+		  bucket: deploy-weeia
+		  upload-dir: czubak
+		  acl: public_read
+		  on:
+			repo: pawel33317/ciTestCzubak
+			
+Teraz po wrzucie zmian do gita travis (na stronie) wychwyci zmiany i zbuduje :)
+
+#############################
+### WRZUCANIE BUILDU NA S3 ##
+#############################
+Konfigurujemy ¿eby po budowaniu travis wrzuca³ na s3
+Z poziomu g³ównego folderu projektu wykonaj polecenie travis setup s3.
+Opcje:
+	Bucket: deploy-weeia,
+	S3 upload directory: [nazwisko_bez_polskich_znaków]
+
+Teraz travis wrzuca na s3 to repo z gita po poprawnym zbudowaniu.
+
+#############################################################################################
+### INSTANCJA PRZY URUCHAMIANIU POBIERAJ¥CA KOD Z S3 I URUCHAMIAJACA AUTOMATYCZNIE PROGRAM ##
+#############################################################################################
+Teraz robimy instancjê ubuntu i w polu user data (przy pierwszym odpaleniu instancji to co bêdzie w tym polu siê wykona po prostu mo¿na wwaliæ skrypt basha)
+Zadanie instancji:
+	-pobiera wszystko z s3
+	-instaluje 
+    -odpala
+    -wrzuca to autoruna w razie restartu
+	
+#######TO CO NALEZY PODAC W POLU USER DATA
+#cloud-config
+write_files:
+  - path: /root/.s3cfg
+    permissions: 0600
+    owner: root:root
+    content: |
+      [default]
+      access_key = XXXXXXXXXXXXXXXXXXXXX
+      secret_key = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+apt_upgrade: true
+packages:
+ - nodejs
+ - npm
+ - git
+ - s3cmd
+runcmd:
+ - [ ln, -s, /usr/bin/nodejs, /usr/bin/node ]
+ - [ npm, install, -g, forever ]
+ - [ s3cmd, --config, /root/.s3cfg, sync, "s3://deploy-weeia/czubak", /usr/bin ]
+ - [ cd, /usr/bin/czubak ]
+ - [ npm, install ]
+ - [ AWS_REGION="us-west-2", forever, /usr/bin/czubak/app.js ]
+ - [ sh, -c, "nodejs app.js &" ]
+ - [ sh, -c, "sed -i '$ d' /etc/rc.local" ]
+ - [ sh, -c, "echo /usr/bin/nodejs /usr/bin/czubak/app.js >> /etc/rc.local" ]
+ - [ sh, -c, "echo exit 0 >> /etc/rc.local" ]
+ - [ sh, -c, "chmod +x /etc/rc.local" ]
+
+PODSUMOWANIE
+--> projekt na gicie 
+	--> projekt node.js
+	--> ustawione testy tryb mocha i zainstalowane przez npm 
+	--> plik test/test.js z testem funkcji discount z pliku discount.js
+	--> skonfigurowany plik travisa który po travis init doda³ siê sam tam na stronie i buduje po ka¿dej zmianie wrzuconej do gita i po poprawnym zbudowaniu wrzuca na S3
+--> C9 ale to jest tylko zwyk³y komp
+--> tworzymy instancjê na aws która wszystko zassie z s3 i odpali
+
+
+
+
+zadanie 2
+user ec2-user
+zasysa apkê javy i odpala apacha tomcata
+
+#cloud-config
+packages:
+ - tomcat7
+ - tomcat7-webapps
+ - tomcat7-admin-webapps
+runcmd:
+ - [ wget, --directory-prefix=/var/lib/tomcat7/webapps/, "https://s3-us-west-2.amazonaws.com/deploy-weeia/activiti-explorer.war" ]
+ - [ service, tomcat7, start]
+
+ 
+
+
+
+ 
+ 
+ 
+ 
