@@ -1,0 +1,48 @@
+Tworzymy loadbalancer
+Konsola AWS --> EC2 --> Load Balancers --> Create Load Balancer
+	--> name: czubakAppWebLB
+	--> Instance Port: 8080 		#na jaki port ma przekierowywaæ
+	--> security group: default
+	--> Ping Port: 8080
+	--> Ping Path: / 				#œcie¿ka po której sprawdza czy instancja dzia³a "/"
+	--> add instances: nie dodajemy
+	
+	otrzymaliœmy IP load balancera: czubakAppWebLB-1286075229.us-west-2.elb.amazonaws.com
+	
+Tworzymy auto scaling group
+Konsola AWS --> EC2 --> Auto Scaling groups --> Create Auto Scaling groups
+	--> Create a new launch configuration
+	
+			tgo nie robimy --> konfiguracja lab3 wybieramy --> jest w niej system który audomatycznie odpala aplikacjê nodejs na porcie 8080 przy starcie systemu
+	--> druga karta zaawansowane i wybieramy receive... i nasz loadbalancer
+	--> keep on initial state
+
+po paru min mo¿emy wejœæ na stronê
+	http://czubakelb-1796075019.us-west-2.elb.amazonaws.com/
+
+w asg wybieramy edytuj
+	wybieramy max instance na 2
+	dodajemy scaling policies
+		add alarm
+			add topic
+				nazwa addinstance
+				pverage >= 70, 1 minute
+		action add 1 instances
+		wait 10 sec
+	dodajemy scaling policies
+		add alarm
+			add topic
+				nazwa removeinstance	
+				pverage <=40 70, 1 minute
+		action set to 1 instances
+		wait 10 sec
+
+wpisujemy du¿o tekstu na stronê i pêtlê na 99999999
+	obci¹¿y to system i powinien dodaæ automatycznie now¹ instancjê
+	jak nic nie bedziemy robiæ i s¹ 2 instancje to odwrotnie
+
+
+skrót
+	tworzyliœmy load balancer i nie dodajemyinstancji itp
+	tworzymy grupe i w pierwszej karcie wskazujemy na load balancera
+	po grupie dodajemy regu³y skalownia

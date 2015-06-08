@@ -1,0 +1,201 @@
+1. Aplikacja WEB
+https://github.com/pawel33317/AWS-app-web.git
+wget http://pliki.haks.pl/upload/rozproszone/config.json
++	ma test
++	po³¹czona z travisem 
++	wyœwietla listê plików z s3
++	umo¿liwia upload na s3
++	czeka ajaksem na zakoñczenie przetwarzania
++	dodaje do kolejki plik do przetworzenia
++	dodaje do bazy info ¿e jest nowy plik nieprzetworzony
+
+
+2. Aplikacja WORKER
+https://github.com/pawel33317/AWS-app-worker.git
+sudo apt-get install graphicsmagick
+npm install gm
++	ma test
++	po³¹czona z travisem 
++	odbiera zlecenie z kolejki
++	przetwarza plik
++	zmienia w bazie ¿e plik jest ju¿ przetworzony
++	pobiera plik z s3 przerabia i wrzuca na s3 z now¹ nazw¹
+
+
+3. Loadbalancer z grup¹ skaluj¹c¹ dla WEB
+czubakLBWebApp
+czubakLBWebApp-680163010.us-west-2.elb.amazonaws.com
+1 instancja max 2 
+	
+3.1 Instancje czubakLBWebApp	
+auto pobiera paczkê z s3 po odpaleniu
+
+
+4. Loadbalancer z grup¹ skaluj¹c¹ dla WORKER
+czubakLBWorkerApp
+czubakLBWorkerApp-1900342678.us-west-2.elb.amazonaws.com 
+
+4.1 Instancje czubakLBWorkerApp	
+1 instancja max 2 auto pobiera paczkê z s3 po odpaleniu
+
+
+
+Struktura S3
+	bucket: czubak
+	folder: appWeb
+	folder: appWorker
+	folder: toProcess
+	folder: processed
+	
+	
+SQS
+	kolejka: czubak_sqs
+
+	
+SimpleDB
+	czubakProjState
+	czubakProjLog
+
+
+
+##############################
+#############WEB APP##########Config dla instancji EC2 przy pierwszym odpaleniu (user data)
+##############################
+tworzy pliki z konfiguracj¹ dla s3cmd oraz aplikacji
+instaluje potrzebne paczki
+pobiera kod z s3
+konfiguruje npm'a
+odpala apkê i wrzuca do autostartu
+##############################
+#cloud-config
+write_files:
+  - path: /root/.s3cfg
+    permissions: 0600
+    owner: root:root
+    content: |
+      [default]
+      access_key = AKIAI7RMLCOJV22L2XNA
+      secret_key = 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
+  - path: /usr/bin/appWeb/config.json
+    permissions: 0777
+    owner: root:root
+    content: |
+      { "accessKeyId": "AKIAI7RMLCOJV22L2XNA", "secretAccessKey": "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", "region": "us-west-2" }
+apt_upgrade: true
+packages:
+ - nodejs
+ - npm
+ - git
+ - s3cmd
+runcmd:
+ - [ ln, -s, /usr/bin/nodejs, /usr/bin/node ]
+ - [ npm, install, -g, forever ]
+ - [ s3cmd, --config, /root/.s3cfg, sync, "s3://czubak/appWeb", /usr/bin ]
+ - [ cd, /usr/bin/appWeb ]
+ - [ npm, install ]
+ - [ AWS_REGION="us-west-2", forever, /usr/bin/appWeb/app.js ]
+ - [ sh, -c, "nodejs app.js &" ]
+ - [ sh, -c, "sed -i '$ d' /etc/rc.local" ]
+ - [ sh, -c, "echo /usr/bin/nodejs /usr/bin/appWeb/app.js >> /etc/rc.local" ]
+ - [ sh, -c, "echo exit 0 >> /etc/rc.local" ]
+ - [ sh, -c, "chmod +x /etc/rc.local" ]
+
+
+##############################
+##########WORKER APP##########Config dla instancji EC2 przy pierwszym odpaleniu (user data)
+##############################
+tworzy plik z konfiguracj¹ dla aplikacji
+instaluje potrzebne paczki
+s3cmd do pobrania kodu z s3
+apache2 dla health check'a w grupie autoskaluj¹cej, ¿eby pingowa³¹ apacha bo apka nie ma socketu
+graphicsmagick do przerabiania obrazów
+pobiera kod z s3
+konfiguruje npm'a
+tworzy katalog tmp i nadaje mu uprawnienia w nim bêd¹ przetwarzane obrazy
+odpala apkê i wrzuca do autostartu
+##############################
+#cloud-config
+write_files:
+  - path: /root/.s3cfg
+    permissions: 0600
+    owner: root:root
+    content: |
+      [default]
+      access_key = AKIAI7RMLCOJV22L2XNA
+      secret_key = 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
+  - path: /usr/bin/appWorker/config.json
+    permissions: 0777
+    owner: root:root
+    content: |
+      { "accessKeyId": "AKIAI7RMLCOJV22L2XNA", "secretAccessKey": "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", "region": "us-west-2" }
+apt_upgrade: true
+packages:
+ - nodejs
+ - npm
+ - git
+ - s3cmd
+ - apache2
+ - graphicsmagick
+runcmd:
+ - [ ln, -s, /usr/bin/nodejs, /usr/bin/node ]
+ - [ npm, install, -g, forever ]
+ - [ s3cmd, --config, /root/.s3cfg, sync, "s3://czubak/appWorker", /usr/bin ]
+ - [ cd, /usr/bin/appWorker ]
+ - [ npm, install ]
+ - [ npm, install, gm ]
+ - [ AWS_REGION="us-west-2", forever, /usr/bin/appWorker/app.js ]
+ - [ sh, -c, "mkdir /usr/bin/appWorker/tmp" ]
+ - [ sh, -c, "chmod 777 /usr/bin/appWorker/tmp" ]
+ - [ sh, -c, "nodejs app.js &" ]
+ - [ sh, -c, "sed -i '$ d' /etc/rc.local" ]
+ - [ sh, -c, "echo /usr/bin/nodejs /usr/bin/appWorker/app.js >> /etc/rc.local" ]
+ - [ sh, -c, "echo exit 0 >> /etc/rc.local" ]
+ - [ sh, -c, "chmod +x /etc/rc.local" ]
+
+
+
+  
+
+
+instalacja rvm i ruby w odpowiedniej wersji 
+curl -sSL https://get.rvm.io | bash -s stable --ruby
+wywali komendê, ¿e brak kluczy skopiowaæ i zainstalowaæ
+rvm install 2.0.0
+rvm use 2.0.0
+rvm rubygems latest
+ruby --version
+
+
+lab2_pawel.czubak
+	info o instancji
+	stawianie instancji
+	tagowanie instancji
+
+ciTestCzubak 
+	test w nodejs
+	po³¹czenie z travis
+	travis wrzuca na s3
+
+aws-sqs-sample
+	konsola sqs nie moje
+
+digestServer --> WORKER
+	odbieranie danych z sqs
+	pobieranie pliku z s3
+	usuwanie wiadomoœci z kolejki
+	zapis do simpledb
+
+awslab4	--> WEB
+	createform --> formularz do uploadu na s3
+	digest --> liczenie skrotu
+	getShortcut --> pobiera dane z simpleDB i wyœwietla
+	bucketcr 
+		odbiera info o wrzuceniu pliku
+		wysy³a wiadomoœæ do kolejki
+		wrzuca dane do simpleDB
+		odczytuje dane z bazy
+		
+	
+
+
+
