@@ -1,0 +1,26 @@
+https://github.com/pawel33317/AWS-app-web.git
+/						strona uploadu obrazka
+/processinfo			strona ³adowana z bucketcr przez ajaksa wyœwietla tylko stan przetworzenia no/yes
+/bucketcr				strona po uplodzie aws na ni¹ przkekierowywuje wyœwietla stan przetworzenia
+
+
+/
+	listuje wszystkie pliki na s3
+	tworzy formularz uploadu
+	
+/processinfo
+	pobiera getem nazwê pliku
+	sprzwdza czy jest przetworzony czy nie
+	
+/bucketcr
+	pobiera getem nazwê pliku
+	pobiera plik i informacje o nim
+	sprawdza w SIMPLEDB czy by³ ju¿ przetworzony kiedyœ
+	je¿eli by³ wyœwietla stronê i koñczy dzia³anie
+	je¿eli nie by³ przetworzony	
+		wrzuca do SIMPLEDB info, ¿e jeszcze nie jest przetworzony
+		wrzuca do SIMPLEDB logi, ip wrzucaj¹cego
+		dodaje wiadomoœæ do kolejki, ¿e trzeba przetworzyæ ten plik
+			wyœwietla na konsoli informacje o przetworzeniu
+			
+		templatka tego pliku ma funkcjê ajax która co 5 sec sprawdza stan przetworzenia

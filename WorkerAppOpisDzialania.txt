@@ -1,0 +1,13 @@
+https://github.com/pawel33317/AWS-app-worker.git
+
+app.js
+
+pobiera wiadomość z kolejki SQS
+jeżeli nie ma koniec kolejne sprawdzenie za 10 sec
+jeżeli jest wiadomość
+	pobiera dane o pliku do przetworzenia z wiadomości z kolejki
+	pobiera plik z s3 i zapisuje na dysku
+	przetwarza plik za pomocą gm (graphicsmagick)
+	wrzuca nowy plik na S3
+	zmienia w simpleDB, że jest już przetworzony
+	usuwa wiadomość z kolejki

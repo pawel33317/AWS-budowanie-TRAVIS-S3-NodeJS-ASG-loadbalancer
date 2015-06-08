@@ -74,13 +74,13 @@ write_files:
     owner: root:root
     content: |
       [default]
-      access_key = AKIAI7RMLCOJV22L2XNA
-      secret_key = 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
+      access_key = XXXXXXXXXXXXXXXXXXX
+      secret_key = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   - path: /usr/bin/appWeb/config.json
     permissions: 0777
     owner: root:root
     content: |
-      { "accessKeyId": "AKIAI7RMLCOJV22L2XNA", "secretAccessKey": "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", "region": "us-west-2" }
+      { "accessKeyId": "XXXXXXXXXXXXXXXXXXX", "secretAccessKey": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "region": "us-west-2" }
 apt_upgrade: true
 packages:
  - nodejs
@@ -121,13 +121,13 @@ write_files:
     owner: root:root
     content: |
       [default]
-      access_key = AKIAI7RMLCOJV22L2XNA
-      secret_key = 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
+      access_key = XXXXXXXXXXXXXXXXXXX
+      secret_key = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   - path: /usr/bin/appWorker/config.json
     permissions: 0777
     owner: root:root
     content: |
-      { "accessKeyId": "AKIAI7RMLCOJV22L2XNA", "secretAccessKey": "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", "region": "us-west-2" }
+      { "accessKeyId": "XXXXXXXXXXXXXXXXXXX", "secretAccessKey": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "region": "us-west-2" }
 apt_upgrade: true
 packages:
  - nodejs
